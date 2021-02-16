@@ -14,14 +14,16 @@ int currMode = EEPROM.read(0);
 
 // Mouse Sens Multiplier
 #define MOUSE_MULT  3
+// Scroll Sens Multiplier (alt keyboard mode)
+#define SCROLL_MULT 1
 
 // Button Keybinds
-#define BIND_A    'a'
-#define BIND_B    's'
-#define BIND_C    'd'
-#define BIND_D    'f'
-#define BIND_FX_L 'z'
-#define BIND_FX_R 'x'
+#define BIND_A    'd'
+#define BIND_B    'f'
+#define BIND_C    'j'
+#define BIND_D    'k'
+#define BIND_FX_L 'v'
+#define BIND_FX_R 'n'
 #define BIND_ST   KEY_RETURN
 
 // Button Pinout
@@ -53,7 +55,7 @@ uint8_t buttonCount = sizeof(buttonPins) / sizeof(buttonPins[0]);
 
 // Encoder sensitivity = number of positions per rotation times 4 (24*4) / number of positions for HID report (256)
 #define ENCODER_SENSITIVITY (double) 0.375
-Encoder encL(3, 2), encR(1, 0);
+Encoder encL(1, 0), encR(3, 2);
 float knob1 = 0;
 float knob2 = 0;
 float old_knob1 = 0;
@@ -92,16 +94,23 @@ void setup() {
   // Startup mode
   int Button1State = digitalRead(BT_A); //Read Btn-A
   int Button2State = digitalRead(BT_B); //Read Btn-B
+  int Button3State = digitalRead(BT_C); //Read Btn-C
   // Button 1 is held down: Joystick Mode
-  if (Button1State == LOW && Button2State == HIGH) {
+  if (Button1State == LOW && Button2State == HIGH && Button3State == HIGH) {
     if (currMode != 1) {
       EEPROM.update(0, 1); 
       delay(200);
     }
-  } else if (Button2State == LOW && Button1State == HIGH) {
+  } else if (Button2State == LOW && Button1State == HIGH && Button3State == HIGH) {
     // Button 2 is held down: Keyboard Mode
     if (currMode != 2) {
       EEPROM.update(0, 2);
+      delay(200);
+    }
+  } else if (Button3State == LOW && Button1State == HIGH && Button2State == HIGH) {
+    // Button 2 is held down: Keyboard Mode
+    if (currMode != 2) {
+      EEPROM.update(0, 3);
       delay(200);
     }
   }
@@ -115,6 +124,8 @@ void loop() {
     joy_mode();
   } else if (EEPROM.read(0) == 2) {
     keyboard_mode();
+  } else if (EEPROM.read(0) == 3) {
+    keyboard_mode_alt();
   }
 }
 
@@ -123,7 +134,7 @@ void loop() {
  */
 void keyboard_mode() {
   // Read encoders
-  knob1 =  (float)(encL.read());
+  knob1 = (float)encL.read();
   knob2 = (float)encR.read();
 
   if(knob1 != old_knob1) {
@@ -148,7 +159,44 @@ void keyboard_mode() {
       old_knob2 = knob2;
     }
   }
+
+  read_buttons();
+}
+
+void keyboard_mode_alt() {
+  // Read encoders
+  knob1 = (float)encL.read();
+  knob2 = (float)encR.read();
+
+  /* Left Knob is ignored for now
+  if(knob1 != old_knob1) {
+    Mouse.move((knob1 - old_knob1) * MOUSE_MULT, 0);
+    
+    // We count the difference in the encoders, but we must not go over arduino's int limit
+    if(knob1 < -255 || knob1 > 255) {
+      encL.write(0);
+      old_knob1 = 0;
+    } else {
+      old_knob1 = knob1;
+    }
+  }
+  */
   
+  if(knob2 != old_knob2) {
+    Mouse.move(0, 0, -(knob2 - old_knob2) * SCROLL_MULT);
+    
+    if(knob2 < -255 || knob2 > 255) {
+      encR.write(0);
+      old_knob2 = 0;
+    } else {
+      old_knob2 = knob2;
+    }
+  }
+
+  read_buttons();
+}
+
+void read_buttons() {
   // Read the buttons, if it's low, output a keyboard press  
   for (int i = 0; i < buttonCount; i++) {
     if (digitalRead(buttonPins[i]) == LOW) {

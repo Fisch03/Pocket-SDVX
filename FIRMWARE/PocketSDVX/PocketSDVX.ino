@@ -14,7 +14,7 @@ int currMode = EEPROM.read(0);
 
 // Mouse Sens Multiplier
 #define MOUSE_MULT  3
-// Scroll Sens Multiplier (alt keyboard mode)
+// Scroll Sens Multiplier (this doesnt like values under 1 for some reason)
 #define SCROLL_MULT 1
 
 // Button Keybinds
@@ -91,6 +91,15 @@ void setup() {
     pinMode(ledPins[i], OUTPUT);
   }
 
+  digitalWrite(BT_ST_LED, HIGH);
+  delay(100);
+  digitalWrite(BT_ST_LED, LOW);
+  for (int i = 0; i < buttonCount-1; i++) {
+    digitalWrite(ledPins[i], HIGH);
+    delay(100);
+    digitalWrite(ledPins[i], LOW);
+  }
+
   // Startup mode
   int Button1State = digitalRead(BT_A); //Read Btn-A
   int Button2State = digitalRead(BT_B); //Read Btn-B
@@ -99,20 +108,32 @@ void setup() {
   if (Button1State == LOW && Button2State == HIGH && Button3State == HIGH) {
     if (currMode != 1) {
       EEPROM.update(0, 1); 
-      delay(200);
+      blink_mode();
+      delay(500);
     }
   } else if (Button2State == LOW && Button1State == HIGH && Button3State == HIGH) {
     // Button 2 is held down: Keyboard Mode
     if (currMode != 2) {
       EEPROM.update(0, 2);
-      delay(200);
+      blink_mode();
+      delay(500);
     }
   } else if (Button3State == LOW && Button1State == HIGH && Button2State == HIGH) {
     // Button 2 is held down: Keyboard Mode
-    if (currMode != 2) {
+    if (currMode != 3) {
       EEPROM.update(0, 3);
-      delay(200);
+      blink_mode();
+      delay(500);
     }
+  }
+}
+
+void blink_mode() {
+  for(int i = 0; i < 5; i++) {
+    digitalWrite(ledPins[EEPROM.read(0)-1], HIGH);
+    delay(40);
+    digitalWrite(ledPins[EEPROM.read(0)-1], LOW);
+    delay(40);
   }
 }
 
